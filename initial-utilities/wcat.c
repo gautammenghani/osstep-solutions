@@ -23,7 +23,7 @@ int main(int argc, char **argv){
     fread(str, size, 1, fp);
     printf("%s",str);
     fclose(fp);
-    //printf("\n");
+    free(str);
   }
   return 0;
 }
