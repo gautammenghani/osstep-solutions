@@ -1,66 +1,52 @@
+// 5/7 tests are passing
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<stdbool.h>
 
-char* compressLine(int len, char *line) {
-  int i=0,j=0,cnt=0;
-  char *output=(char *)malloc(100);
-  char *ch=(char *)malloc(5);
-  //aaaabb
-  while(j<len) {
+void compressLine(int len, char *line) {
+  int i=0,j=0,cnt=1;
+  while (j<len){
     i=j;
     j++;
     cnt=1;
-    while(j<len && line[i]==line[j]){
-      i++;
-      j++;
+    while(j<len && line[i]==line[j]) {
       cnt++;
+      j++;
     }
-    printf("output : %s\n",output);
-    sprintf(ch, "%d", cnt);
-    strncat(ch, &line[i],1);
-    strcat(output,ch);
+    fwrite(&cnt, 4,1,stdout);
+    fwrite(&line[i], 1,1,stdout);
   }
-  if(i!=j) { 
-    sprintf(ch, "%d", cnt);
-    strncat(ch,&line[len-1],1);
-    strcat(output,ch);
-   }
-  return strcat(output,"\n");
 }
 
 int main(int argc, char **argv){
-  int i,l;
+  long i,l;
   size_t len=0;
   char *line;
-  FILE *fout=fopen("out.z","wb");
+  
+  FILE *fout=fopen("out.txt","w");
   if (argc==1) { 
-    printf("wgrep: searchterm [file ...]\n");
+    printf("wzip: file1 [file2 ...]\n");
     exit(1);
   }
-  //char *pattern = argv[1]; 
-  //int patternLen = strlen(pattern);
   for(i=1; i<argc;i++){
-    //printf("\nbegin scan : i - %d",i);
     FILE *fp = fopen(argv[i], "r");
-    if (fp == NULL) {
-        printf("wgrep: cannot open file\n");
-        exit(1);
-    }
-    // get the file size
-    //fseek(fp, 0L, SEEK_END);
-    // calculating the size of the file
-    //long long size = ftell(fp);
-    //rewind(fp);
-    char *tLine;
     while ((l = getline(&line, &len, fp)) > 0) { 
-            tLine = compressLine(l, line);
-            printf("\nCompresssed lien : %s\n",tLine);
-            fwrite(tLine, sizeof(line),1, fout);          
+      fwrite(line, strlen(line), 1, fout);                  
     }
     fclose(fp);
-    fclose(fout);
+    
   }
+  fclose(fout);
+  FILE *fp = fopen("out.txt", "r");
+  if (fp == NULL) {
+      printf("wgrep: cannot open file\n");
+      exit(1);
+  }
+  while ((l = getline(&line, &len, fp)) > 0) { 
+    compressLine(l, line);                  
+  }
+  fclose(fp);
+
   return 0;
 }
