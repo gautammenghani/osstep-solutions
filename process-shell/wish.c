@@ -39,6 +39,20 @@ bool isCommandRedirected(char **argv) {
   return false;
 }
 
+char* getFileNameFromCommand(char **argv){
+  int i=0;
+  while (argv[i]) {
+    if (strcmp(argv[i],">")==0) {
+      if(argv[i+1]) {
+        argv[i] = NULL;
+        return argv[i+1];
+      }
+    }
+    i++;
+  }
+  return NULL;
+}
+
 bool isBuiltInCommand(char *cmdName) {
   if(strcmp(cmdName, "cd")==0 || strcmp(cmdName, "path")==0 || strcmp(cmdName, "exit")==0)
     return true;
@@ -101,20 +115,26 @@ char* commandCanExecute(char *cmdName) {
 }
 
 int execute(char *absPath, struct command cmd, bool isRedirection) {
+  int fd=-1;
   int rc = fork();
   int res=0;
+  char *fileName=NULL;
   if (rc<0) 
     exit(1);
    
   else if (rc==0) {
     //run the command in forked process
-    if (isRedirection) {
-      int fd = open("/dev/null", O_WRONLY);
+    if (isRedirection) {      
+      //get the output filename
+      fileName = getFileNameFromCommand(cmd.argv);
+      printf("filename : %s\n",fileName);
+      if(!fileName)
+        return 1;
+      fd = open(fileName, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
       dup2(fd, 1);
-      dup2(fd, 2);
-      close(fd);
     }
     res = execv(absPath, cmd.argv);
+    close(fd);
     if (res<0) 
       exit(1);
     else
