@@ -15,7 +15,7 @@ char *path[10]={"/bin", NULL};
 void printArgv(char **argv) {
   int i=0;
   while (argv[i]!=NULL) {
-    printf("boi : '%s'\n",argv[i]);
+    printf("element: '%s'\n",argv[i]);
     i++;
   }
 }
@@ -36,8 +36,23 @@ bool isBuiltInCommand(char *cmdName) {
 }
 
 int executeBuiltInCommand(struct command cmd) {
+  int i=0;
   if (strcmp(cmd.commandName, "cd")==0) {
-    printf("cd cmdn\n");
+    //if number(args) is not 1, throw error
+    i=1;
+    while(cmd.argv[i])
+      i++;
+    if (i!=2) {
+      fprintf(stderr, "cd has wrong number of args\n");
+      return 1;
+    }
+    if(chdir(cmd.argv[1])==0) {
+      printf("Current dir changed to : %s\n", cmd.argv[1]);
+    }
+    else {
+      printf("Could not change dir\n");
+      return 1;
+    }
   }
   else if(strcmp(cmd.commandName, "path")==0) {
     if (cmd.argv[1]==NULL) {
@@ -46,7 +61,7 @@ int executeBuiltInCommand(struct command cmd) {
     }
     else {
       //set path to specified path
-      int i=0;
+      i=0;
       while(cmd.argv[i+1]){
         path[i]=cmd.argv[i+1];
         i++;
@@ -54,11 +69,8 @@ int executeBuiltInCommand(struct command cmd) {
       path[i]=NULL;
     }
   }
-  else {
-    //exit
-    printf("exit cmdn\n");
+  else 
     exit(0);
-  }
   return 0;
 }
 
@@ -84,7 +96,7 @@ int executeCommand(struct command cmd) {
   //check if user command is found and can be executed
   char *absPath = commandCanExecute(cmd.commandName);
   if (!absPath) {
-    printf("command not found\n");
+    printf("command cannot exec or not found\n");
     return 1;
   }
   int rc = fork();
@@ -96,8 +108,10 @@ int executeCommand(struct command cmd) {
   else if (rc==0) {
     //run the command in forked process
     res = execv(absPath, cmd.argv);
-    if (res<0) 
+    if (res<0) { 
+      printf("command could not execute");
       exit(1);
+    }
     else
       exit(0);
   }
@@ -138,7 +152,7 @@ struct command parseCommand(char *line) {
 
 int main(int argc, char **args) {
   char *line;
-  int l,res;
+  int l;
   size_t len=0;
   struct command cmd;
   //struct command *cptr = &cmd;
@@ -147,9 +161,7 @@ int main(int argc, char **args) {
   while ((l=getline(&line, &len, stdin))) {
     if (l>1) {
       cmd = parseCommand(line);
-      res = executeCommand(cmd);
-      if (res!=0)
-        printf("command did not execute\n");
+      executeCommand(cmd);
     }
     printf("wish> ");
   }
