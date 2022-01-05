@@ -4,6 +4,7 @@
 #include<stdbool.h>
 #include<unistd.h>
 #include<sys/wait.h>
+#include <fcntl.h>
 
 struct command {
   char *commandName;
@@ -26,6 +27,16 @@ void printPath(){
     printf("%d : %s\n",i, path[i]);
     i++;
   }
+}
+
+bool isCommandRedirected(char **argv) {
+  int i=0;
+  while(argv[i]) {
+    if(strcmp(argv[i], ">")==0)
+      return true;
+    i++;
+  }
+  return false;
 }
 
 bool isBuiltInCommand(char *cmdName) {
@@ -89,36 +100,47 @@ char* commandCanExecute(char *cmdName) {
   return NULL;
 }
 
+int execute(char *absPath, struct command cmd, bool isRedirection) {
+  int rc = fork();
+  int res=0;
+  if (rc<0) 
+    exit(1);
+   
+  else if (rc==0) {
+    //run the command in forked process
+    if (isRedirection) {
+      int fd = open("/dev/null", O_WRONLY);
+      dup2(fd, 1);
+      dup2(fd, 2);
+      close(fd);
+    }
+    res = execv(absPath, cmd.argv);
+    if (res<0) 
+      exit(1);
+    else
+      exit(0);
+  }
+  else 
+    wait(&res);
+  return res;
+}
+
 int executeCommand(struct command cmd) {
+  bool isRedirection = false;
+
   if (isBuiltInCommand(cmd.commandName))
     return executeBuiltInCommand(cmd);
     
   //check if user command is found and can be executed
   char *absPath = commandCanExecute(cmd.commandName);
-  if (!absPath) {
-    printf("command cannot exec or not found\n");
+  if (!absPath) 
     return 1;
-  }
-  int rc = fork();
-  int res;
-  if (rc<0) {
-    fprintf(stderr, "fork failed\n");
-    exit(1);
-  } 
-  else if (rc==0) {
-    //run the command in forked process
-    res = execv(absPath, cmd.argv);
-    if (res<0) { 
-      printf("command could not execute");
-      exit(1);
-    }
-    else
-      exit(0);
-  }
-  else {
-    wait(&res);
-  }
-  return res;
+
+  //check if user wants to redirect output to a file
+  isRedirection = isCommandRedirected(cmd.argv);
+
+  //run the command
+  return execute(absPath, cmd, isRedirection);
 }
 
 struct command parseCommand(char *line) {
@@ -152,16 +174,19 @@ struct command parseCommand(char *line) {
 
 int main(int argc, char **args) {
   char *line;
-  int l;
+  int l, res;
   size_t len=0;
   struct command cmd;
+  char error_message[30] = "An error has occurred\n";
   //struct command *cptr = &cmd;
 
   printf("wish> ");
   while ((l=getline(&line, &len, stdin))) {
     if (l>1) {
       cmd = parseCommand(line);
-      executeCommand(cmd);
+      res = executeCommand(cmd);
+      if(res!=0)
+        write(STDERR_FILENO, error_message, strlen(error_message)); 
     }
     printf("wish> ");
   }
