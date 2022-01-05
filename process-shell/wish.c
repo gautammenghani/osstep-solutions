@@ -10,12 +10,20 @@ struct command {
   char *argv[10];
 };
 
-char *path[10]={"/bin", "/usr/bin/", NULL};
+char *path[10]={"/bin", NULL};
 
 void printArgv(char **argv) {
   int i=0;
   while (argv[i]!=NULL) {
     printf("boi : '%s'\n",argv[i]);
+    i++;
+  }
+}
+
+void printPath(){
+  int i=0;
+  while(path[i]) {
+    printf("%d : %s\n",i, path[i]);
     i++;
   }
 }
@@ -27,12 +35,24 @@ bool isBuiltInCommand(char *cmdName) {
     return false;
 }
 
-int executeBuiltInCommand(char *cmdName) {
-  if (strcmp(cmdName, "cd")==0) {
+int executeBuiltInCommand(struct command cmd) {
+  if (strcmp(cmd.commandName, "cd")==0) {
     printf("cd cmdn\n");
   }
-  else if(strcmp(cmdName, "path")==0) {
-    printf("path cmdn\n");
+  else if(strcmp(cmd.commandName, "path")==0) {
+    if (cmd.argv[1]==NULL) {
+      //path should be blank
+      path[0]=NULL;
+    }
+    else {
+      //set path to specified path
+      int i=0;
+      while(cmd.argv[i+1]){
+        path[i]=cmd.argv[i+1];
+        i++;
+      }
+      path[i]=NULL;
+    }
   }
   else {
     //exit
@@ -59,13 +79,14 @@ char* commandCanExecute(char *cmdName) {
 
 int executeCommand(struct command cmd) {
   if (isBuiltInCommand(cmd.commandName))
-    return executeBuiltInCommand(cmd.commandName);
+    return executeBuiltInCommand(cmd);
     
   //check if user command is found and can be executed
   char *absPath = commandCanExecute(cmd.commandName);
-  if (!absPath)
+  if (!absPath) {
+    printf("command not found\n");
     return 1;
-
+  }
   int rc = fork();
   int res;
   if (rc<0) {
