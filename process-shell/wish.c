@@ -1,13 +1,13 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
+#include<stdbool.h>
 #include<unistd.h>
 #include<sys/wait.h>
 
 struct command {
   char *commandName;
   char **argv;
-  char **path;
 };
 
 void printArgv(char **argv) {
@@ -19,10 +19,35 @@ void printArgv(char **argv) {
 }
 
 void printStruct(struct command cmd){
-  printf("\n%s : %s : %s",cmd.commandName, *cmd.argv, *cmd.path);
+  printf("\n%s : %s ",cmd.commandName, *cmd.argv);
+}
+
+bool isBuiltInCommand(char *cmdName) {
+  if(strcmp(cmdName, "cd")==0 || strcmp(cmdName, "path")==0 || strcmp(cmdName, "exit")==0)
+    return true;
+  else
+    return false;
+}
+
+int executeBuiltInCommand(char *cmdName) {
+  if (strcmp(cmdName, "cd")==0) {
+    printf("cd cmdn\n");
+  }
+  else if(strcmp(cmdName, "path")==0) {
+    printf("path cmdn\n");
+  }
+  else {
+    //exit
+    printf("exit cmdn\n");
+    exit(0);
+  }
+  return 0;
 }
 
 int executeCommand(struct command cmd) {
+  if (isBuiltInCommand(cmd.commandName))
+    return executeBuiltInCommand(cmd.commandName);
+    
   int rc = fork();
   int res;
   if (rc<0) {
@@ -72,7 +97,8 @@ struct command parseCommand(char *line) {
     cmd={NULL, NULL, argv};
   }
   else*/
-  cmd = (struct command){commandName, argv, NULL};
+  cmd.commandName = commandName;
+  cmd.argv = argv;
 
   return cmd;
 }
@@ -85,9 +111,6 @@ int main(int argc, char **args) {
 
   printf("wish> ");
   while ((l=getline(&line, &len, stdin))) {
-    if (strcmp(line,"exit\n")==0)
-      exit(0);
-
     if (l>1) {
       cmd = parseCommand(line);
       //printStruct(cmd);
