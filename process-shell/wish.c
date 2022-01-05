@@ -7,19 +7,17 @@
 
 struct command {
   char *commandName;
-  char **argv;
+  char *argv[10];
 };
+
+char *path[10]={"/bin", "/usr/bin/", NULL};
 
 void printArgv(char **argv) {
   int i=0;
   while (argv[i]!=NULL) {
-    printf("st : '%s'\n",argv[i]);
+    printf("boi : '%s'\n",argv[i]);
     i++;
   }
-}
-
-void printStruct(struct command cmd){
-  printf("\n%s : %s ",cmd.commandName, *cmd.argv);
 }
 
 bool isBuiltInCommand(char *cmdName) {
@@ -44,10 +42,30 @@ int executeBuiltInCommand(char *cmdName) {
   return 0;
 }
 
+char* commandCanExecute(char *cmdName) {
+  int i=0;
+  char *absPath;
+  while(path[i]!=NULL){
+    absPath = strdup(path[i]);
+    strcat(absPath, "/");
+    strcat(absPath, cmdName);
+    if(access(absPath, X_OK)==0) {
+      return absPath;
+    }
+    i++;
+  } 
+  return NULL;
+}
+
 int executeCommand(struct command cmd) {
   if (isBuiltInCommand(cmd.commandName))
     return executeBuiltInCommand(cmd.commandName);
     
+  //check if user command is found and can be executed
+  char *absPath = commandCanExecute(cmd.commandName);
+  if (!absPath)
+    return 1;
+
   int rc = fork();
   int res;
   if (rc<0) {
@@ -56,7 +74,7 @@ int executeCommand(struct command cmd) {
   } 
   else if (rc==0) {
     //run the command in forked process
-    res = execv(cmd.commandName, cmd.argv);
+    res = execv(absPath, cmd.argv);
     if (res<0) 
       exit(1);
     else
@@ -72,7 +90,7 @@ struct command parseCommand(char *line) {
   char *token;
   char *command = strdup(line);
   char *commandName;
-  char *argv[20];
+  char *args[20];
   int i=1;
   struct command cmd;
 
@@ -80,26 +98,20 @@ struct command parseCommand(char *line) {
   command[strlen(command)-1]='\0';
 
   //first arg needs to be the program name
-  argv[0]="wish";
+  args[0]="wish";
 
   commandName = strsep(&command, " ");
   while (1){
     token = strsep(&command, " ");
     if (token == NULL) {
-      argv[i] = NULL;
+      args[i] = NULL;
       break;
     }
-    argv[i] = token;
+    args[i]=token;
     i++;
   }
-
-  /*if(strcmp(commandName, "path") == 0) {
-    cmd={NULL, NULL, argv};
-  }
-  else*/
+  memcpy(cmd.argv, args, sizeof args);
   cmd.commandName = commandName;
-  cmd.argv = argv;
-
   return cmd;
 }
 
@@ -108,15 +120,15 @@ int main(int argc, char **args) {
   int l,res;
   size_t len=0;
   struct command cmd;
+  //struct command *cptr = &cmd;
 
   printf("wish> ");
   while ((l=getline(&line, &len, stdin))) {
     if (l>1) {
       cmd = parseCommand(line);
-      //printStruct(cmd);
       res = executeCommand(cmd);
       if (res!=0)
-        printf("command not found\n");
+        printf("command did not execute\n");
     }
     printf("wish> ");
   }
