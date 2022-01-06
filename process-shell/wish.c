@@ -5,6 +5,7 @@
 #include<unistd.h>
 #include<sys/wait.h>
 #include <fcntl.h>
+#include <errno.h>
 
 struct command {
   char *commandName;
@@ -12,22 +13,6 @@ struct command {
 };
 
 char *path[10]={"/bin", NULL};
-
-void printArgv(char **argv) {
-  int i=0;
-  while (argv[i]!=NULL) {
-    printf("element: '%s'\n",argv[i]);
-    i++;
-  }
-}
-
-void printPath(){
-  int i=0;
-  while(path[i]) {
-    printf("%d : %s\n",i, path[i]);
-    i++;
-  }
-}
 
 bool isCommandRedirected(char **argv) {
   int i=0;
@@ -68,7 +53,6 @@ int executeBuiltInCommand(struct command cmd) {
     while(cmd.argv[i])
       i++;
     if (i!=2) {
-      fprintf(stderr, "cd has wrong number of args\n");
       return 1;
     }
     if(chdir(cmd.argv[1])==0) {
@@ -134,9 +118,11 @@ int execute(char *absPath, struct command cmd, bool isRedirection) {
       dup2(fd, 1);
     }
     res = execv(absPath, cmd.argv);
+    fprintf(stderr, "%s\n", strerror(errno));
     close(fd);
-    if (res<0) 
+    if (res<0) {
       exit(1);
+    }
     else
       exit(0);
   }
