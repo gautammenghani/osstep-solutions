@@ -232,8 +232,26 @@ int main(int argc, char **args) {
   char error_message[30] = "An error has occurred\n";
   //struct command *cptr = &cmd;
 
-  if (batchMode(args)) {
-
+  if (argc==2) {
+    FILE *f = fopen(args[1],"r");
+    if (!f){
+      printf("Could not open file\n");
+      exit(1);
+    }
+    while ((l=getline(&line, &len, f))) {
+      if (l > 1){
+        //printf("line : %s\n", line);
+        cmd = parseCommand(line);
+        //printf("command : %s\n",cmd.commandName);
+        res = executeCommand(cmd);
+        if(res!=0)
+          write(STDERR_FILENO, error_message, strlen(error_message)); 
+      }
+      else
+        break;
+    }
+    fclose(f);
+    exit(0);
   }
   else {
     printf("wish> ");
