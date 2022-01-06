@@ -192,23 +192,77 @@ struct command parseCommand(char *line) {
   return cmd;
 }
 
+int splitCommands(char *line, char **lines) {
+  int i=1;
+  char *command;
+  command = strsep(&line,"&"); 
+  lines[0]=command;
+  while (1) {
+    command = strsep(&line,"&"); 
+    if (!command)
+      break;
+
+    if(strlen(command)==1)  
+      return 1;
+    //strip leading white space from each command
+    strsep(&command, " ");
+    lines[i]=command;
+    i++;
+  }
+  if (strlen(lines[i-1])==0)
+    return 1;
+  lines[i]=NULL;
+  return (i>0?0:1); 
+}
+
+bool batchMode(char **args) {
+  return false;
+}
+
+bool inputHasMultipleCommands(char *line) {
+  return true;
+}
+
 int main(int argc, char **args) {
   char *line;
+  char *parallelCmnds[20];
   int l, res;
   size_t len=0;
   struct command cmd;
   char error_message[30] = "An error has occurred\n";
   //struct command *cptr = &cmd;
 
-  printf("wish> ");
-  while ((l=getline(&line, &len, stdin))) {
-    if (l>1) {
-      cmd = parseCommand(line);
-      res = executeCommand(cmd);
-      if(res!=0)
-        write(STDERR_FILENO, error_message, strlen(error_message)); 
-    }
+  if (batchMode(args)) {
+
+  }
+  else {
     printf("wish> ");
+    while ((l=getline(&line, &len, stdin))) {
+      if (l>1) {
+        if (inputHasMultipleCommands(line)) {
+          int status = splitCommands(line, parallelCmnds);
+          if(status==1) {
+              write(STDERR_FILENO, error_message, strlen(error_message)); 
+              exit(1);
+          }
+          int i=0;
+          while (parallelCmnds[i]) {
+            cmd = parseCommand(parallelCmnds[i]);
+            res = executeCommand(cmd);
+            if(res!=0)
+              write(STDERR_FILENO, error_message, strlen(error_message)); 
+            i++;
+          }
+        }
+        else {
+          cmd = parseCommand(line);
+          res = executeCommand(cmd);
+          if(res!=0)
+            write(STDERR_FILENO, error_message, strlen(error_message)); 
+        }
+      }
+      printf("wish> ");
+    }
   }
 
   return 0;
